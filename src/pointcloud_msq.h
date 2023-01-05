@@ -9,17 +9,18 @@
 #include <sys/types.h>
 
 #ifndef SENSOR_MSGS_MESSAGE_POINTCLOUD2_H
-    #include "PointCloud2.h"
+#include "PointCloud2.h"
 #endif
 
 #ifndef SENSOR_MSGS_MESSAGE_POINTCLOUD2_H
-    #include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/PointCloud2.h"
 #endif
 
+#include <chrono>
 #include <stdexcept>
 #include <string>
+#include <cstring>
 #include <thread>
-#include <chrono>
 #include <utility>
 
 #include "ros/ros.h"
@@ -47,14 +48,14 @@ namespace ros1_pointcloud2_msq {
 
     using sensor_msgs::PointCloud2;
 
-    using PointCloud2CallBack = void(*)(const sensor_msgs::PointCloud2& msg);
+    using PointCloud2CallBack = void (*)(const sensor_msgs::PointCloud2 &msg);
 
     /* the unix message queue wrapper */
     struct msq_wrapper;
     /* message for sending to message queue */
     struct PointCloud2Buf;
 
-    static std::shared_ptr<msq_wrapper> create_msq_wrapper(const char* channel, PointCloud2CallBack cb) noexcept {
+    static std::shared_ptr<msq_wrapper> create_msq_wrapper(const char *channel, PointCloud2CallBack cb) noexcept {
         return std::make_shared<msq_wrapper>(channel, cb);
     }
 
@@ -65,7 +66,7 @@ namespace ros1_pointcloud2_msq {
 
 
     /* unix default message queue wrapper for sending point cloud */
-    struct msq_wrapper: public std::enable_shared_from_this<msq_wrapper> {
+    struct msq_wrapper : public std::enable_shared_from_this<msq_wrapper> {
         struct server;
         struct client;
 
@@ -74,30 +75,34 @@ namespace ros1_pointcloud2_msq {
     public:
         /* sturct size */
         size_t buf_size;
-        server* s_ptr;
-        client* c_ptr;
+        server *s_ptr;
+        client *c_ptr;
 
     public:
         /* Server is used for sending */
         struct server {
 
-            server(const char* channel_path) {
+            server(const char *channel_path) {
                 /* initial msq_queue*/
                 key_t k = ftok(channel_path, 'b');
                 channel_id id_ = msgget(k, 0666 | IPC_CREAT);
-                if (id_ < 0) {
+                if (id_ <= 0) {
                     std::string error = "msg wrapper error create channel " + std::string(channel_path);
                     throw std::runtime_error(std::move(error));
+                } else {
+                    ROS_INFO("create pub channel %d success", id_);
                 }
             }
 
-            void enqueue(const ::sensor_msgs::PointCloud2 msg) {
+            void enqueue(const ::sensor_msgs::PointCloud2& msg) {
                 struct PointCloud2Buf buf;
                 buf.data = std::move(msg);
-                int res = msgsnd(id_, &buf, sizeof(struct PointCloud2Buf), 0);
+                buf.mType = 0;
+
+                int res = msgsnd(id_, &buf, sizeof(buf), 0);
                 if (res < 0) {
                     // log & abort
-                    ROS_ERROR("send pointcloud2 msg failed");
+                    ROS_ERROR("send pointcloud2 msg failed, reason: %s", strerror(errno));
                 }
             }
 
@@ -108,9 +113,12 @@ namespace ros1_pointcloud2_msq {
 
         /* Client is used for receving */
         struct client {
-            client(const char* channel_path, PointCloud2CallBack cb): cb_(cb) {
+            client(const char *channel_path, PointCloud2CallBack cb) : cb_(cb) {
                 key_t k = ftok(channel_path, 'b');
                 channel_id id_ = msgget(k, 0666 | IPC_CREAT);
+                if (id_ > 0) {
+                    ROS_INFO("create sub channel %d success", id_);
+                }
             }
 
             void loop(uint8_t rate) {
@@ -138,7 +146,7 @@ namespace ros1_pointcloud2_msq {
         };
 
     public:
-        msq_wrapper(const char* channel_path, PointCloud2CallBack cb) {
+        msq_wrapper(const char *channel_path, PointCloud2CallBack cb) {
             struct PointCloud2Buf m;
             buf_size = sizeof(m.data);
             s_ptr = new server(channel_path);
@@ -150,4 +158,4 @@ namespace ros1_pointcloud2_msq {
             if (c_ptr) delete c_ptr;
         }
     };
-}
+}// namespace ros1_pointcloud2_msq
