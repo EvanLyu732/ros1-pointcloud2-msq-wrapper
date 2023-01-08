@@ -3,7 +3,7 @@
 * [中文](README-zn.md)
 
 ## Description:
-A unix default message queue wrapper class for ros1 sensor_msgs::PointCloud2.
+A System V message queue wrapper class for ros1 sensor_msgs::PointCloud2.
 
 
 ## BackGround:
