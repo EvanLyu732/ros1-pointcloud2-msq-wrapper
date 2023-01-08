@@ -1,4 +1,4 @@
-# ros1-pointcloud2-System-V-message-queue-wrapper 
+# ros1-pointcloud2-message-queue-wrapper 
 
 * [中文](README-zn.md)
 
