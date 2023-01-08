@@ -1,8 +1,8 @@
-# ros1-pointcloud2-unix-msq-wrapper
+# ros1-pointcloud2-msq-wrapper
 
 
 ## 简述：
-  提供了一个基于unix默认的消息队列对于ros1消息sensor_msgs::PointCloud2的封装
+  提供了一个基于System V的消息队列对于ros1消息sensor_msgs::PointCloud2的封装
 
 ## 背景：
   由于ros1主从机模式下（x86为主，arm64为从）存在着网络丢包现象。比如，在arm64上启动基于[一经雷达sdk](https://github.com/ZVISION-lidar/zvision_sdk)的驱动封装， 再在arm64上启动ros1订阅程序。此时由于x86为主，roscore是在x86上启动的。因此
